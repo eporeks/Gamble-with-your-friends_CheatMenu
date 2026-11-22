@@ -23,6 +23,7 @@ namespace TestMenu
         public static bool customDragonTower = false;
         public static bool alwaysZeroRoulette = false;
         public static bool customMinesweeper = false;
+        public static bool rigMoneyWheel = false;
 
         // Стили и текстуры для UI
         private bool stylesInitialized = false;
@@ -168,6 +169,7 @@ namespace TestMenu
             DrawToggleCard("Башня дракона без мин", ref customDragonTower);
             DrawToggleCard("Только 0 в рулетке", ref alwaysZeroRoulette);
             DrawToggleCard("Мины без мин", ref customMinesweeper);
+            DrawToggleCard("Мины без мин", ref rigMoneyWheel);
 
             GUILayout.FlexibleSpace();
 
@@ -521,5 +523,31 @@ namespace TestMenu
         }
     }
 
+    [HarmonyPatch(typeof(MoneyWheel), "StartGame")]
+    public static class MoneyWheelStartGamePatch
+    {
+        static bool Prefix(MoneyWheel __instance)
+        {
+            if (!Plugin.rigMoneyWheel) return true;
+            if (!NetworkServer.active) return false;
 
+            // Вызываем базовый GameBase.StartGame() (у вас уже есть BaseStartGameReversePatch)
+            BaseStartGameReversePatch.CallBaseStartGame(__instance);
+
+            // Автоматически выбираем ставку "Orange"
+            __instance.SelectBettingOption("Orange");
+
+            var wheelField = AccessTools.Field(typeof(MoneyWheel), "wheel");
+            var wheel = wheelField?.GetValue(__instance) as Wheel;
+
+            if (wheel != null)
+            {
+                // Подставьте сюда индекс сектора "Orange" из класса Wheel
+                int orangeIndex = 0;
+                wheel.SpinTheWheel(new FixedRandom(orangeIndex));
+            }
+
+            return false;
+        }
+    }
 }
