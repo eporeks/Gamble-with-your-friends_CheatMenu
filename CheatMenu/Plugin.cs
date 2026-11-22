@@ -25,6 +25,7 @@ namespace TestMenu
         public static bool customMinesweeper = false;
         public static bool rigMoneyWheel = false;
         public static bool rigPlinko = false;
+        public static bool rigSlots = false;
 
         // Стили и текстуры для UI
         private bool stylesInitialized = false;
@@ -172,6 +173,7 @@ namespace TestMenu
             DrawToggleCard("Мины без мин", ref customMinesweeper);
             DrawToggleCard("MoneyWheel 100% 10x", ref rigMoneyWheel);
             DrawToggleCard("Plinko 100% 5x", ref rigPlinko);
+            DrawToggleCard("Слоты 100% Джекпот", ref rigSlots);
 
             GUILayout.FlexibleSpace();
 
@@ -581,6 +583,39 @@ namespace TestMenu
             }
 
             return true; // Продолжаем выполнение оригинального OnPuckEnteredPocket с максимальным slotIndex
+        }
+    }
+
+    [HarmonyPatch(typeof(Slots), "GetWinningPatterns")]
+    public static class SlotsJackpotPatch
+    {
+        static void Postfix(Slots __instance, ref object __result)
+        {
+            if (!Plugin.rigSlots) return;
+
+            var patternsField = AccessTools.Field(typeof(Slots), "patterns");
+            var patterns = patternsField?.GetValue(__instance) as List<SlotPattern>;
+            if (patterns == null || patterns.Count == 0) return;
+
+            // Получаем приватный вложенный класс Slots.SlotsWinData
+            Type winDataType = AccessTools.Inner(typeof(Slots), "SlotsWinData");
+            Type listType = typeof(List<>).MakeGenericType(winDataType);
+            var fakeWinList = (IList)Activator.CreateInstance(listType);
+
+            // В оригинале формула: 1f - ((float)num - 1.5f) * 0.5f.
+            // При num = 0 (самый редкий/дорогой символ) множитель равен 1.75f.
+            float bestSymbolMultiplier = 1.75f;
+
+            foreach (var pattern in patterns)
+            {
+                if (pattern != null)
+                {
+                    object winData = Activator.CreateInstance(winDataType, new object[] { bestSymbolMultiplier, pattern });
+                    fakeWinList.Add(winData);
+                }
+            }
+
+            __result = fakeWinList;
         }
     }
 }
