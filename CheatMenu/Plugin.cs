@@ -8,12 +8,13 @@ using UnityEngine;
 
 namespace TestMenu
 {
-    [BepInPlugin("com.cheat.menu", "InGame Menu", "1.0.0")]
+    [BepInPlugin("com.cheat.menu", "InGame Menu", "2.0.0")]
     public class Plugin : BaseUnityPlugin
     {
         private bool show = true;
-        // Увеличили высоту окна под новые кнопки
-        private Rect rect = new Rect(30, 30, 300, 380);
+        private Rect rect = new Rect(40, 40, 540, 420);
+        private int activeTab = 0;
+        private Vector2 scrollPos = Vector2.zero;
 
         // Флаги состояния функций
         public static bool rigDuckRace = false;
@@ -27,20 +28,37 @@ namespace TestMenu
         public static bool rigPlinko = false;
         public static bool rigSlots = false;
 
-        // Стили и текстуры для UI
+        // Стили и текстуры
         private bool stylesInitialized = false;
         private GUIStyle windowStyle;
-        private GUIStyle headerStyle;
-        private GUIStyle subHeaderStyle;
+        private GUIStyle sidebarStyle;
+        private GUIStyle brandTitleStyle;
+        private GUIStyle brandBadgeStyle;
+        private GUIStyle sectionTitleStyle;
         private GUIStyle cardStyle;
-        private GUIStyle buttonStyle;
-        private GUIStyle toggleBgOnStyle;
-        private GUIStyle toggleBgOffStyle;
-        private GUIStyle labelStyle;
-        private GUIStyle footerStyle;
+        private GUIStyle cardHoverStyle;
+        private GUIStyle itemTitleStyle;
+        private GUIStyle itemDescStyle;
+        private GUIStyle tabNormalStyle;
+        private GUIStyle tabActiveStyle;
+        private GUIStyle actionBtnStyle;
+        private GUIStyle footerTextStyle;
+        private GUIStyle statusBadgeStyle;
 
-        private Texture2D accentTex;
+        private Texture2D topAccentTex;
         private Texture2D dividerTex;
+        private Texture2D indicatorActiveTex;
+        private Texture2D indicatorInactiveTex;
+        private Texture2D toggleTrackOnTex;
+        private Texture2D toggleTrackOffTex;
+        private Texture2D toggleKnobTex;
+
+        private readonly string[] tabNames = new string[]
+        {
+            "  CRASH & ARCADE",
+            "  TABLE & SLOTS",
+            "  SYSTEM & MISC"
+        };
 
         private void Awake()
         {
@@ -60,83 +78,103 @@ namespace TestMenu
         {
             if (stylesInitialized) return;
 
-            Color bgDark = new Color(0.07f, 0.07f, 0.10f, 0.96f);
-            Color cardBg = new Color(0.11f, 0.12f, 0.16f, 1f);
-            Color btnNormal = new Color(0.15f, 0.17f, 0.23f, 1f);
-            Color btnHover = new Color(0.20f, 0.24f, 0.33f, 1f);
-            Color btnActive = new Color(0.00f, 0.70f, 0.85f, 1f);
-            Color accentCyan = new Color(0.00f, 0.85f, 1.00f, 1f);
-            Color onGreen = new Color(0.10f, 0.78f, 0.48f, 1f);
-            Color offGray = new Color(0.22f, 0.23f, 0.28f, 1f);
-            Color borderCol = new Color(0.22f, 0.25f, 0.34f, 0.8f);
+            Color bgMain = new Color(0.055f, 0.058f, 0.075f, 0.98f);
+            Color bgSidebar = new Color(0.042f, 0.045f, 0.058f, 1f);
+            Color bgCard = new Color(0.085f, 0.090f, 0.118f, 1f);
+            Color bgCardHover = new Color(0.105f, 0.112f, 0.145f, 1f);
+            Color borderSubtle = new Color(0.16f, 0.17f, 0.22f, 0.9f);
 
-            accentTex = MakeTex(2, 2, accentCyan);
-            dividerTex = MakeTex(2, 2, new Color(1f, 1f, 1f, 0.08f));
+            Color accentPrimary = new Color(0.45f, 0.36f, 0.98f, 1f);
+            Color accentSecondary = new Color(0.00f, 0.82f, 0.95f, 1f);
+            Color tabActiveBg = new Color(0.45f, 0.36f, 0.98f, 0.18f);
+
+            topAccentTex = MakeHorizontalGradientTex(256, 3, accentPrimary, accentSecondary);
+            dividerTex = MakeTex(2, 2, new Color(1f, 1f, 1f, 0.06f));
+            indicatorActiveTex = MakeTex(4, 32, accentPrimary);
+            indicatorInactiveTex = MakeTex(4, 32, new Color(0.20f, 0.22f, 0.28f, 0.5f));
+
+            toggleTrackOnTex = MakeRoundedTex(44, 22, 11, accentPrimary, accentPrimary);
+            toggleTrackOffTex = MakeRoundedTex(44, 22, 11, new Color(0.14f, 0.15f, 0.19f, 1f), borderSubtle);
+            toggleKnobTex = MakeRoundedTex(16, 16, 8, Color.white, Color.white);
 
             windowStyle = new GUIStyle(GUI.skin.window);
-            windowStyle.normal.background = MakeBorderedTex(64, 64, bgDark, borderCol);
+            windowStyle.normal.background = MakeRoundedTex(64, 64, 10, bgMain, borderSubtle);
             windowStyle.onNormal.background = windowStyle.normal.background;
-            windowStyle.padding = new RectOffset(14, 14, 14, 12);
-            windowStyle.border = new RectOffset(2, 2, 2, 2);
+            windowStyle.padding = new RectOffset(0, 0, 0, 0);
+            windowStyle.border = new RectOffset(12, 12, 12, 12);
 
-            headerStyle = new GUIStyle(GUI.skin.label);
-            headerStyle.fontSize = 16;
-            headerStyle.fontStyle = FontStyle.Bold;
-            headerStyle.normal.textColor = Color.white;
-            headerStyle.alignment = TextAnchor.MiddleLeft;
+            sidebarStyle = new GUIStyle(GUI.skin.box);
+            sidebarStyle.normal.background = MakeTex(2, 2, bgSidebar);
+            sidebarStyle.margin = new RectOffset(0, 0, 0, 0);
+            sidebarStyle.padding = new RectOffset(12, 12, 16, 12);
 
-            subHeaderStyle = new GUIStyle(GUI.skin.label);
-            subHeaderStyle.fontSize = 10;
-            subHeaderStyle.fontStyle = FontStyle.Bold;
-            subHeaderStyle.normal.textColor = accentCyan;
-            subHeaderStyle.alignment = TextAnchor.MiddleRight;
+            brandTitleStyle = new GUIStyle(GUI.skin.label);
+            brandTitleStyle.fontSize = 15;
+            brandTitleStyle.fontStyle = FontStyle.Bold;
+            brandTitleStyle.normal.textColor = Color.white;
+
+            brandBadgeStyle = new GUIStyle(GUI.skin.label);
+            brandBadgeStyle.fontSize = 10;
+            brandBadgeStyle.fontStyle = FontStyle.Bold;
+            brandBadgeStyle.normal.textColor = accentSecondary;
+
+            sectionTitleStyle = new GUIStyle(GUI.skin.label);
+            sectionTitleStyle.fontSize = 11;
+            sectionTitleStyle.fontStyle = FontStyle.Bold;
+            sectionTitleStyle.normal.textColor = new Color(0.52f, 0.55f, 0.65f, 1f);
 
             cardStyle = new GUIStyle(GUI.skin.box);
-            cardStyle.normal.background = MakeBorderedTex(32, 32, cardBg, new Color(1f, 1f, 1f, 0.05f));
-            cardStyle.padding = new RectOffset(10, 10, 8, 8);
-            cardStyle.margin = new RectOffset(0, 0, 4, 4);
+            cardStyle.normal.background = MakeRoundedTex(48, 48, 8, bgCard, borderSubtle);
+            cardStyle.border = new RectOffset(10, 10, 10, 10);
+            cardStyle.padding = new RectOffset(12, 14, 10, 10);
+            cardStyle.margin = new RectOffset(0, 0, 0, 8);
 
-            labelStyle = new GUIStyle(GUI.skin.label);
-            labelStyle.fontSize = 13;
-            labelStyle.normal.textColor = new Color(0.88f, 0.90f, 0.95f, 1f);
-            labelStyle.alignment = TextAnchor.MiddleLeft;
+            cardHoverStyle = new GUIStyle(cardStyle);
+            cardHoverStyle.normal.background = MakeRoundedTex(48, 48, 8, bgCardHover, new Color(0.45f, 0.36f, 0.98f, 0.45f));
 
-            buttonStyle = new GUIStyle(GUI.skin.button);
-            buttonStyle.fontSize = 13;
-            buttonStyle.fontStyle = FontStyle.Bold;
-            buttonStyle.normal.textColor = Color.white;
-            buttonStyle.hover.textColor = accentCyan;
-            buttonStyle.active.textColor = Color.black;
-            buttonStyle.normal.background = MakeBorderedTex(32, 32, btnNormal, borderCol);
-            buttonStyle.hover.background = MakeBorderedTex(32, 32, btnHover, accentCyan);
-            buttonStyle.active.background = MakeTex(2, 2, btnActive);
-            buttonStyle.padding = new RectOffset(10, 10, 9, 9);
-            buttonStyle.margin = new RectOffset(0, 0, 4, 4);
+            itemTitleStyle = new GUIStyle(GUI.skin.label);
+            itemTitleStyle.fontSize = 13;
+            itemTitleStyle.fontStyle = FontStyle.Bold;
+            itemTitleStyle.normal.textColor = new Color(0.93f, 0.94f, 0.98f, 1f);
+            itemTitleStyle.margin = new RectOffset(0, 0, 0, 2);
 
-            toggleBgOnStyle = new GUIStyle(GUI.skin.button);
-            toggleBgOnStyle.fontSize = 11;
-            toggleBgOnStyle.fontStyle = FontStyle.Bold;
-            toggleBgOnStyle.normal.textColor = Color.black;
-            toggleBgOnStyle.hover.textColor = Color.black;
-            toggleBgOnStyle.normal.background = MakeTex(2, 2, onGreen);
-            toggleBgOnStyle.hover.background = MakeTex(2, 2, new Color(0.15f, 0.88f, 0.55f, 1f));
-            toggleBgOnStyle.fixedWidth = 52;
-            toggleBgOnStyle.fixedHeight = 24;
+            itemDescStyle = new GUIStyle(GUI.skin.label);
+            itemDescStyle.fontSize = 11;
+            itemDescStyle.normal.textColor = new Color(0.55f, 0.58f, 0.68f, 1f);
+            itemDescStyle.margin = new RectOffset(0, 0, 0, 0);
 
-            toggleBgOffStyle = new GUIStyle(GUI.skin.button);
-            toggleBgOffStyle.fontSize = 11;
-            toggleBgOffStyle.fontStyle = FontStyle.Bold;
-            toggleBgOffStyle.normal.textColor = new Color(0.65f, 0.68f, 0.75f, 1f);
-            toggleBgOffStyle.hover.textColor = Color.white;
-            toggleBgOffStyle.normal.background = MakeTex(2, 2, offGray);
-            toggleBgOffStyle.hover.background = MakeTex(2, 2, new Color(0.28f, 0.30f, 0.38f, 1f));
-            toggleBgOffStyle.fixedWidth = 52;
-            toggleBgOffStyle.fixedHeight = 24;
+            tabNormalStyle = new GUIStyle(GUI.skin.button);
+            tabNormalStyle.fontSize = 11;
+            tabNormalStyle.fontStyle = FontStyle.Bold;
+            tabNormalStyle.alignment = TextAnchor.MiddleLeft;
+            tabNormalStyle.normal.textColor = new Color(0.60f, 0.63f, 0.72f, 1f);
+            tabNormalStyle.hover.textColor = Color.white;
+            tabNormalStyle.normal.background = MakeTex(2, 2, Color.clear);
+            tabNormalStyle.hover.background = MakeRoundedTex(32, 32, 6, new Color(1f, 1f, 1f, 0.04f), Color.clear);
+            tabNormalStyle.fixedHeight = 34;
+            tabNormalStyle.margin = new RectOffset(0, 0, 2, 2);
 
-            footerStyle = new GUIStyle(GUI.skin.label);
-            footerStyle.fontSize = 10;
-            footerStyle.normal.textColor = new Color(0.45f, 0.48f, 0.56f, 1f);
-            footerStyle.alignment = TextAnchor.MiddleCenter;
+            tabActiveStyle = new GUIStyle(tabNormalStyle);
+            tabActiveStyle.normal.textColor = Color.white;
+            tabActiveStyle.normal.background = MakeRoundedTex(32, 32, 6, tabActiveBg, new Color(0.45f, 0.36f, 0.98f, 0.5f));
+            tabActiveStyle.hover.background = tabActiveStyle.normal.background;
+
+            actionBtnStyle = new GUIStyle(GUI.skin.button);
+            actionBtnStyle.fontSize = 11;
+            actionBtnStyle.fontStyle = FontStyle.Bold;
+            actionBtnStyle.normal.textColor = new Color(0.85f, 0.87f, 0.95f, 1f);
+            actionBtnStyle.hover.textColor = Color.white;
+            actionBtnStyle.normal.background = MakeRoundedTex(32, 32, 6, bgCard, borderSubtle);
+            actionBtnStyle.hover.background = MakeRoundedTex(32, 32, 6, bgCardHover, accentPrimary);
+            actionBtnStyle.fixedHeight = 28;
+
+            footerTextStyle = new GUIStyle(GUI.skin.label);
+            footerTextStyle.fontSize = 10;
+            footerTextStyle.normal.textColor = new Color(0.45f, 0.48f, 0.58f, 1f);
+
+            statusBadgeStyle = new GUIStyle(GUI.skin.label);
+            statusBadgeStyle.fontSize = 10;
+            statusBadgeStyle.fontStyle = FontStyle.Bold;
 
             stylesInitialized = true;
         }
@@ -151,52 +189,199 @@ namespace TestMenu
 
         private void WindowFunc(int id)
         {
-            GUI.DrawTexture(new Rect(0, 0, rect.width, 3), accentTex);
+            GUI.DrawTexture(new Rect(0, 0, rect.width, 3), topAccentTex);
+
+            GUILayout.BeginHorizontal(GUILayout.ExpandHeight(true));
+
+            // ЛЕВАЯ ПАНЕЛЬ (SIDEBAR)
+            GUILayout.BeginVertical(sidebarStyle, GUILayout.Width(165), GUILayout.ExpandHeight(true));
+
+            GUILayout.Label("AETHER // PRIV", brandTitleStyle);
+            GUILayout.Label("INTERNAL BUILD 2.0", brandBadgeStyle);
+
+            GUILayout.Space(14);
+            DrawDivider();
+            GUILayout.Space(10);
+
+            GUILayout.Label("MODULES", sectionTitleStyle);
+            GUILayout.Space(4);
+
+            for (int i = 0; i < tabNames.Length; i++)
+            {
+                if (GUILayout.Button(tabNames[i], activeTab == i ? tabActiveStyle : tabNormalStyle))
+                {
+                    activeTab = i;
+                    scrollPos = Vector2.zero;
+                }
+            }
+
+            GUILayout.FlexibleSpace();
+
+            bool isHost = NetworkServer.active;
+            statusBadgeStyle.normal.textColor = isHost
+                ? new Color(0.15f, 0.85f, 0.55f, 1f)
+                : new Color(0.95f, 0.65f, 0.20f, 1f);
+
+            GUILayout.Label(isHost ? "● HOST SERVER ACTIVE" : "● CLIENT MODE (NO HOST)", statusBadgeStyle);
+            GUILayout.Label($"ACTIVE MODS: {CountActiveModules()} / 10", footerTextStyle);
+
+            GUILayout.EndVertical();
+
+            // ПРАВАЯ ПАНЕЛЬ (ОСНОВНОЙ КОНТЕНТ)
+            GUILayout.BeginVertical(GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
+            GUILayout.Space(14);
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label("CASINO PANEL", headerStyle);
+            GUILayout.Space(16);
+            GUILayout.Label(GetTabHeader(activeTab), brandTitleStyle);
             GUILayout.FlexibleSpace();
-            GUILayout.Label("v1.1", subHeaderStyle);
+            GUILayout.Label("[INS]", footerTextStyle);
+            GUILayout.Space(16);
             GUILayout.EndHorizontal();
 
-            GUILayout.Space(6);
-            DrawDivider();
-            GUILayout.Space(6);
+            GUILayout.Space(8);
 
-            // Вспомогательный метод для отрисовки переключателей
-            DrawToggleCard("100% победа в утках", ref rigDuckRace);
-            DrawToggleCard("Пингвин прыгает до конца", ref zeroCrashChance);
-            DrawToggleCard("Краш до 999999x", ref infiniteCrashPoint);
-            DrawToggleCard("Blackjack постоянно 21", ref rigBlackjack);
-            DrawToggleCard("Башня дракона без мин", ref customDragonTower);
-            DrawToggleCard("Только 0 в рулетке", ref alwaysZeroRoulette);
-            DrawToggleCard("Мины без мин", ref customMinesweeper);
-            DrawToggleCard("MoneyWheel 100% 10x", ref rigMoneyWheel);
-            DrawToggleCard("Plinko 100% 5x", ref rigPlinko);
-            DrawToggleCard("Слоты 100% Джекпот", ref rigSlots);
+            GUILayout.BeginHorizontal();
+            GUILayout.Space(14);
+            scrollPos = GUILayout.BeginScrollView(scrollPos, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
 
-            GUILayout.FlexibleSpace();
+            if (activeTab == 0)
+            {
+                DrawModuleCard("Crash — Infinite Multiplier", "Устанавливает точку краша на 9,999,999x", ref infiniteCrashPoint);
+                DrawModuleCard("CrossyRoad — God Mode", "Обнуляет шанс падения пингвина на каждом шаге", ref zeroCrashChance);
+                DrawModuleCard("Dragon Tower — Safe Path", "Убирает яйца со всех этажей башни", ref customDragonTower);
+                DrawModuleCard("Minesweeper — No Mines", "Очищает сетку мин перед началом раунда", ref customMinesweeper);
+                DrawModuleCard("Plinko — Max Slot Magnet", "Направляет выплату в лунку с максимальным X", ref rigPlinko);
+            }
+            else if (activeTab == 1)
+            {
+                DrawModuleCard("Blackjack — Instant 21", "Подкладывает Туз и 10-очковую карту игроку", ref rigBlackjack);
+                DrawModuleCard("Roulette — Zero Rig", "Фиксирует выпадение сектора 0 на колесе", ref alwaysZeroRoulette);
+                DrawModuleCard("MoneyWheel — 10x Orange", "Автоставка на Orange и гарантированный 10x", ref rigMoneyWheel);
+                DrawModuleCard("Slots — Force Jackpot", "Активирует все выигрышные линии с топ-символом", ref rigSlots);
+                DrawModuleCard("Duck Race — Turbo Win", "Ускоряет выбранную утку и замедляет соперников", ref rigDuckRace);
+            }
+            else if (activeTab == 2)
+            {
+                GUILayout.Label("QUICK ACTIONS", sectionTitleStyle);
+                GUILayout.Space(6);
 
-            DrawDivider();
-            GUILayout.Space(4);
-            GUILayout.Label("[ INSERT ] — скрыть / открыть меню", footerStyle);
+                if (GUILayout.Button("DISABLE ALL MODULES", actionBtnStyle))
+                {
+                    DisableAll();
+                }
 
-            GUI.DragWindow(new Rect(0, 0, rect.width, 40));
+                GUILayout.Space(6);
+
+                if (GUILayout.Button("ENABLE ALL MODULES", actionBtnStyle))
+                {
+                    EnableAll();
+                }
+
+                GUILayout.Space(14);
+                GUILayout.Label("INFORMATION", sectionTitleStyle);
+                GUILayout.Space(4);
+                GUILayout.Label("• Все серверные эксплойты требуют прав хоста лобби.", itemDescStyle);
+                GUILayout.Label("• Клавиша INSERT скрывает или открывает оверлей.", itemDescStyle);
+                GUILayout.Label("• Перетаскивание окна доступно за верхнюю шапку.", itemDescStyle);
+            }
+
+            GUILayout.EndScrollView();
+            GUILayout.Space(10);
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(12);
+            GUILayout.EndVertical();
+
+            GUILayout.EndHorizontal();
+
+            GUI.DragWindow(new Rect(0, 0, rect.width, 42));
         }
 
-        private void DrawToggleCard(string label, ref bool state)
+        private void DrawModuleCard(string title, string description, ref bool state)
         {
-            GUILayout.BeginVertical(cardStyle);
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(label, labelStyle);
-            GUILayout.FlexibleSpace();
+            Rect cardRect = GUILayoutUtility.GetRect(new GUIContent(title), cardStyle, GUILayout.Height(54), GUILayout.ExpandWidth(true));
+            bool isHovered = cardRect.Contains(Event.current.mousePosition);
 
-            if (GUILayout.Button(state ? "ON" : "OFF", state ? toggleBgOnStyle : toggleBgOffStyle))
+            GUI.Box(cardRect, GUIContent.none, isHovered ? cardHoverStyle : cardStyle);
+
+            Rect indicatorRect = new Rect(cardRect.x + 1, cardRect.y + 10, 3, cardRect.height - 20);
+            GUI.DrawTexture(indicatorRect, state ? indicatorActiveTex : indicatorInactiveTex);
+
+            Rect titleRect = new Rect(cardRect.x + 14, cardRect.y + 8, cardRect.width - 74, 20);
+            Rect descRect = new Rect(cardRect.x + 14, cardRect.y + 27, cardRect.width - 74, 18);
+
+            GUI.Label(titleRect, title, itemTitleStyle);
+            GUI.Label(descRect, description, itemDescStyle);
+
+            Rect toggleRect = new Rect(cardRect.xMax - 56, cardRect.y + (cardRect.height - 22) * 0.5f, 44, 22);
+            GUI.DrawTexture(toggleRect, state ? toggleTrackOnTex : toggleTrackOffTex);
+
+            float knobX = state ? (toggleRect.xMax - 19) : (toggleRect.x + 3);
+            Rect knobRect = new Rect(knobX, toggleRect.y + 3, 16, 16);
+            GUI.DrawTexture(knobRect, toggleKnobTex);
+
+            if (Event.current.type == EventType.MouseDown && Event.current.button == 0 && cardRect.Contains(Event.current.mousePosition))
             {
                 state = !state;
+                Event.current.Use();
             }
-            GUILayout.EndHorizontal();
-            GUILayout.EndVertical();
+
+            GUILayout.Space(6);
+        }
+
+        private string GetTabHeader(int tab)
+        {
+            switch (tab)
+            {
+                case 0: return "Crash & Arcade Exploits";
+                case 1: return "Table, Wheels & Slots";
+                default: return "Configuration & Status";
+            }
+        }
+
+        private int CountActiveModules()
+        {
+            int count = 0;
+            if (rigDuckRace) count++;
+            if (zeroCrashChance) count++;
+            if (infiniteCrashPoint) count++;
+            if (rigBlackjack) count++;
+            if (customDragonTower) count++;
+            if (alwaysZeroRoulette) count++;
+            if (customMinesweeper) count++;
+            if (rigMoneyWheel) count++;
+            if (rigPlinko) count++;
+            if (rigSlots) count++;
+            return count;
+        }
+
+        private void DisableAll()
+        {
+            rigDuckRace = false;
+            zeroCrashChance = false;
+            infiniteCrashPoint = false;
+            rigBlackjack = false;
+            customDragonTower = false;
+            alwaysZeroRoulette = false;
+            customMinesweeper = false;
+            rigMoneyWheel = false;
+            rigPlinko = false;
+            rigSlots = false;
+        }
+
+        private void EnableAll()
+        {
+            rigDuckRace = true;
+            zeroCrashChance = true;
+            infiniteCrashPoint = true;
+            rigBlackjack = true;
+            customDragonTower = true;
+            alwaysZeroRoulette = true;
+            customMinesweeper = true;
+            rigMoneyWheel = true;
+            rigPlinko = true;
+            rigSlots = true;
         }
 
         private void DrawDivider()
@@ -215,25 +400,64 @@ namespace TestMenu
             return result;
         }
 
-        private Texture2D MakeBorderedTex(int width, int height, Color fill, Color border)
+        private Texture2D MakeHorizontalGradientTex(int width, int height, Color left, Color right)
         {
             Texture2D result = new Texture2D(width, height);
-            for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
             {
-                for (int x = 0; x < width; x++)
+                Color c = Color.Lerp(left, right, (float)x / (width - 1));
+                for (int y = 0; y < height; y++)
                 {
-                    bool isBorder = (x == 0 || y == 0 || x == width - 1 || y == height - 1);
-                    result.SetPixel(x, y, isBorder ? border : fill);
+                    result.SetPixel(x, y, c);
                 }
             }
             result.Apply();
             return result;
         }
+
+        private Texture2D MakeRoundedTex(int width, int height, int radius, Color fill, Color border)
+        {
+            Texture2D result = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    float dist = RoundedBoxSDF(
+                        new Vector2(x - width * 0.5f + 0.5f, y - height * 0.5f + 0.5f),
+                        new Vector2(width * 0.5f - 0.5f, height * 0.5f - 0.5f),
+                        radius
+                    );
+
+                    if (dist > 0.5f)
+                    {
+                        result.SetPixel(x, y, Color.clear);
+                    }
+                    else if (dist > -1.0f && border.a > 0f)
+                    {
+                        float alpha = Mathf.Clamp01(0.5f - dist);
+                        Color col = Color.Lerp(fill, border, 1f - Mathf.Clamp01(-dist));
+                        col.a *= alpha;
+                        result.SetPixel(x, y, col);
+                    }
+                    else
+                    {
+                        result.SetPixel(x, y, fill);
+                    }
+                }
+            }
+            result.Apply();
+            return result;
+        }
+
+        private float RoundedBoxSDF(Vector2 p, Vector2 b, float r)
+        {
+            Vector2 q = new Vector2(Mathf.Abs(p.x), Mathf.Abs(p.y)) - b + new Vector2(r, r);
+            return Mathf.Min(Mathf.Max(q.x, q.y), 0f) + Vector2.Max(q, Vector2.zero).magnitude - r;
+        }
     }
 
     // ==========================================
-    // ПАТЧ 1: GetCrashChanceForStep
-    // Замени CrashGame на реальное имя класса!
+    // ПАТЧ 1: CrossyRoad — GetCrashChanceForStep
     // ==========================================
     [HarmonyPatch(typeof(CrossyRoad), "GetCrashChanceForStep")]
     public static class CrashChancePatch
@@ -243,13 +467,12 @@ namespace TestMenu
             if (!Plugin.zeroCrashChance) return true;
 
             __result = 0f;
-            return false; // Пропускаем оригинальный метод
+            return false;
         }
     }
 
     // ==========================================
-    // ПАТЧ 2: SetCrashPoint
-    // Замени CrashGame на реальное имя класса!
+    // ПАТЧ 2: Crash — SetCrashPoint
     // ==========================================
     [HarmonyPatch(typeof(Crash), "SetCrashPoint")]
     public static class SetCrashPointPatch
@@ -286,7 +509,7 @@ namespace TestMenu
     }
 
     // ==========================================
-    // ПАТЧ 3: Blackjack DealCardToPlayer
+    // ПАТЧ 3: Blackjack — DealCardToPlayer
     // ==========================================
     [HarmonyPatch(typeof(Blackjack), "DealCardToPlayer")]
     public static class BlackjackDealPatch
@@ -301,7 +524,6 @@ namespace TestMenu
                 return false;
             }
 
-            // Получаем доступ к приватным полям и методам класса Blackjack
             var deckField = AccessTools.Field(typeof(Blackjack), "deck");
             var playerHandField = AccessTools.Field(typeof(Blackjack), "playerHand");
             var spawnedPlayerCardsField = AccessTools.Field(typeof(Blackjack), "spawnedPlayerCards");
@@ -336,18 +558,17 @@ namespace TestMenu
                 deck.Insert(0, item);
             }
 
-            // Получаем enum Blackjack.CardAreaType.Player
             Type cardAreaEnum = AccessTools.Inner(typeof(Blackjack), "CardAreaType");
             object playerAreaVal = Enum.Parse(cardAreaEnum, "Player");
 
             dealToHandMethod.Invoke(__instance, new object[] { playerHand, spawnedPlayerCards, playerAreaVal, isFaceDown });
 
-            return false; // Пропускаем оригинальный метод
+            return false;
         }
     }
 
     // ==========================================
-    // ПАТЧ 4: Твой оригинальный DuckRace
+    // ПАТЧ 4: DuckRace — DuckRaceRoutine
     // ==========================================
     [HarmonyPatch(typeof(DuckRaceDuck), "DuckRaceRoutine")]
     public static class DuckRacePatch
@@ -416,6 +637,34 @@ namespace TestMenu
         }
     }
 
+    // ==========================================
+    // ПАТЧ 5: DragonTower — SetEggs & RevealEggs
+    // ==========================================
+    [HarmonyPatch(typeof(DragonTower), "SetEggs")]
+    public static class SetEggsPatch
+    {
+        static bool Prefix(DragonTower __instance)
+        {
+            if (!Plugin.customDragonTower) return true;
+
+            var floorsField = AccessTools.Field(typeof(DragonTower), "floors");
+            var floors = floorsField?.GetValue(__instance) as IEnumerable;
+
+            if (floors != null)
+            {
+                var floorType = AccessTools.Inner(typeof(DragonTower), "Floor");
+                var eggIndexField = AccessTools.Field(floorType, "eggIndex");
+
+                foreach (var floor in floors)
+                {
+                    eggIndexField?.SetValue(floor, -1);
+                }
+            }
+
+            return false;
+        }
+    }
+
     [HarmonyPatch(typeof(DragonTower), "RevealEggs")]
     public static class RevealEggsPatch
     {
@@ -441,7 +690,6 @@ namespace TestMenu
                     int eggIndex = (int)eggIndexField.GetValue(floor);
                     var buttons = buttonsField.GetValue(floor) as IList;
 
-                    // Вызываем ServerSetButtonState только если eggIndex валидный
                     if (buttons != null && eggIndex >= 0 && eggIndex < buttons.Count)
                     {
                         var btn = buttons[eggIndex] as DragonTowerButton;
@@ -450,55 +698,49 @@ namespace TestMenu
                 }
             }
 
-            return false; // Пропускаем оригинальный RevealEggs(), чтобы не словить IndexOutOfRange
+            return false;
         }
     }
 
-
-
-    // Кастомный Random, который возвращает заданное число вместо случайного
+    // ==========================================
+    // ПАТЧ 6: Roulette — StartGame & FixedRandom
+    // ==========================================
     public class FixedRandom : System.Random
+    {
+        private readonly int _fixedValue;
+
+        public FixedRandom(int fixedValue)
         {
-            private readonly int _fixedValue;
-
-            public FixedRandom(int fixedValue)
-            {
-                _fixedValue = fixedValue;
-            }
-
-            public override int Next(int minValue, int maxValue)
-            {
-                // Защита от выхода за пределы диапазона
-                if (_fixedValue < minValue) return minValue;
-                if (_fixedValue >= maxValue) return maxValue - 1;
-                return _fixedValue;
-            }
+            _fixedValue = fixedValue;
         }
+
+        public override int Next(int minValue, int maxValue)
+        {
+            if (_fixedValue < minValue) return minValue;
+            if (_fixedValue >= maxValue) return maxValue - 1;
+            return _fixedValue;
+        }
+    }
 
     [HarmonyPatch(typeof(Roulette), "StartGame")]
     public static class RouletteStartGamePatch
     {
         static bool Prefix(Roulette __instance)
         {
-            // Если флаг в плагине выключен — запускаем оригинальный метод
             if (!Plugin.alwaysZeroRoulette) return true;
-
             if (!NetworkServer.active) return false;
 
-            // 1. Вызываем базовый метод GameBase.StartGame()
             BaseStartGameReversePatch.CallBaseStartGame(__instance);
 
-            // 2. Получаем приватное поле wheel
             var wheelField = AccessTools.Field(typeof(Roulette), "wheel");
             var wheel = wheelField?.GetValue(__instance) as Wheel;
 
             if (wheel != null)
             {
-                // Передаем FixedRandom(0), чтобы оба вызова rng.Next(0, 37) вернули 0
                 wheel.SpinTheWheel(new FixedRandom(0));
             }
 
-            return false; // Пропускаем оригинальный Roulette.StartGame()
+            return false;
         }
     }
 
@@ -509,6 +751,9 @@ namespace TestMenu
         public static void CallBaseStartGame(GameBase instance) => throw new NotImplementedException();
     }
 
+    // ==========================================
+    // ПАТЧ 7: Minesweeper — SetMines
+    // ==========================================
     [HarmonyPatch(typeof(Minesweeper), "SetMines")]
     public static class SetMinesPatch
     {
@@ -520,41 +765,34 @@ namespace TestMenu
             var mineIndexesField = AccessTools.Field(typeof(Minesweeper), "_mineIndexes");
             var mineIndexes = mineIndexesField?.GetValue(__instance) as HashSet<int>;
 
-            // Очищаем список индексов мин — ни одна клетка не взорвётся
             mineIndexes?.Clear();
-
-            return false; // Пропускаем оригинальную расстановку мин
-        }
-    }
-
-    [HarmonyPatch(typeof(MoneyWheel), "StartGame")]
-    public static class MoneyWheelStartGamePatch
-    {
-        static bool Prefix(MoneyWheel __instance)
-        {
-            if (!Plugin.rigMoneyWheel) return true;
-            if (!NetworkServer.active) return false;
-
-            // Вызываем базовый GameBase.StartGame() (у вас уже есть BaseStartGameReversePatch)
-            BaseStartGameReversePatch.CallBaseStartGame(__instance);
-
-            // Автоматически выбираем ставку "Orange"
-            __instance.SelectBettingOption("Orange");
-
-            var wheelField = AccessTools.Field(typeof(MoneyWheel), "wheel");
-            var wheel = wheelField?.GetValue(__instance) as Wheel;
-
-            if (wheel != null)
-            {
-                // Подставьте сюда индекс сектора "Orange" из класса Wheel
-                int orangeIndex = 0;
-                wheel.SpinTheWheel(new FixedRandom(orangeIndex));
-            }
 
             return false;
         }
     }
 
+    // ==========================================
+    // ПАТЧ 8: MoneyWheel — HandleWheelStopped
+    // ==========================================
+    [HarmonyPatch(typeof(MoneyWheel), "HandleWheelStopped")]
+    public static class MoneyWheelPatch
+    {
+        static bool Prefix(MoneyWheel __instance, ref string result)
+        {
+            if (!Plugin.rigMoneyWheel) return true;
+
+            result = "Orange";
+
+            var betOptionField = AccessTools.Field(typeof(MoneyWheel), "_currentBettingOption");
+            betOptionField?.SetValue(__instance, "Orange");
+
+            return true;
+        }
+    }
+
+    // ==========================================
+    // ПАТЧ 9: Plinko — OnPuckEnteredPocket
+    // ==========================================
     [HarmonyPatch(typeof(Plinko), "OnPuckEnteredPocket")]
     public static class PlinkoPocketPatch
     {
@@ -582,10 +820,13 @@ namespace TestMenu
                 slotIndex = maxIndex;
             }
 
-            return true; // Продолжаем выполнение оригинального OnPuckEnteredPocket с максимальным slotIndex
+            return true;
         }
     }
 
+    // ==========================================
+    // ПАТЧ 10: Slots — GetWinningPatterns
+    // ==========================================
     [HarmonyPatch(typeof(Slots), "GetWinningPatterns")]
     public static class SlotsJackpotPatch
     {
@@ -597,13 +838,10 @@ namespace TestMenu
             var patterns = patternsField?.GetValue(__instance) as List<SlotPattern>;
             if (patterns == null || patterns.Count == 0) return;
 
-            // Получаем приватный вложенный класс Slots.SlotsWinData
             Type winDataType = AccessTools.Inner(typeof(Slots), "SlotsWinData");
             Type listType = typeof(List<>).MakeGenericType(winDataType);
             var fakeWinList = (IList)Activator.CreateInstance(listType);
 
-            // В оригинале формула: 1f - ((float)num - 1.5f) * 0.5f.
-            // При num = 0 (самый редкий/дорогой символ) множитель равен 1.75f.
             float bestSymbolMultiplier = 1.75f;
 
             foreach (var pattern in patterns)
