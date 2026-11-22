@@ -24,6 +24,7 @@ namespace TestMenu
         public static bool alwaysZeroRoulette = false;
         public static bool customMinesweeper = false;
         public static bool rigMoneyWheel = false;
+        public static bool rigPlinko = false;
 
         // Стили и текстуры для UI
         private bool stylesInitialized = false;
@@ -169,7 +170,8 @@ namespace TestMenu
             DrawToggleCard("Башня дракона без мин", ref customDragonTower);
             DrawToggleCard("Только 0 в рулетке", ref alwaysZeroRoulette);
             DrawToggleCard("Мины без мин", ref customMinesweeper);
-            DrawToggleCard("Мины без мин", ref rigMoneyWheel);
+            DrawToggleCard("MoneyWheel 100% 10x", ref rigMoneyWheel);
+            DrawToggleCard("Plinko 100% 5x", ref rigPlinko);
 
             GUILayout.FlexibleSpace();
 
@@ -548,6 +550,37 @@ namespace TestMenu
             }
 
             return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(Plinko), "OnPuckEnteredPocket")]
+    public static class PlinkoPocketPatch
+    {
+        static bool Prefix(Plinko __instance, ref int slotIndex)
+        {
+            if (!Plugin.rigPlinko) return true;
+
+            var multipliersField = AccessTools.Field(typeof(Plinko), "slotMultipliers");
+            var multipliers = multipliersField?.GetValue(__instance) as double[];
+
+            if (multipliers != null && multipliers.Length > 0)
+            {
+                int maxIndex = 0;
+                double maxVal = multipliers[0];
+
+                for (int i = 1; i < multipliers.Length; i++)
+                {
+                    if (multipliers[i] > maxVal)
+                    {
+                        maxVal = multipliers[i];
+                        maxIndex = i;
+                    }
+                }
+
+                slotIndex = maxIndex;
+            }
+
+            return true; // Продолжаем выполнение оригинального OnPuckEnteredPocket с максимальным slotIndex
         }
     }
 }
