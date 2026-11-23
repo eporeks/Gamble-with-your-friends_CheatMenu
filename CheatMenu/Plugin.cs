@@ -6,7 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace TestMenu
+namespace CheatMenu
 {
     [BepInPlugin("com.cheat.menu", "InGame Menu", "2.0.1")]
     public class Plugin : BaseUnityPlugin
@@ -203,7 +203,7 @@ namespace TestMenu
             GUILayout.BeginHorizontal();
             GUILayout.Space(12);
             GUILayout.BeginVertical();
-            GUILayout.Label("AETHER // PRIV", brandTitleStyle);
+            GUILayout.Label("EPOREKS // PRIV", brandTitleStyle);
             GUILayout.Label("INTERNAL BUILD 2.0", brandBadgeStyle);
             GUILayout.EndVertical();
             GUILayout.EndHorizontal();
