@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace TestMenu
 {
-    [BepInPlugin("com.cheat.menu", "InGame Menu", "2.0.0")]
+    [BepInPlugin("com.cheat.menu", "InGame Menu", "2.0.1")]
     public class Plugin : BaseUnityPlugin
     {
         private bool show = true;
@@ -30,13 +30,9 @@ namespace TestMenu
 
         // Стили и текстуры
         private bool stylesInitialized = false;
-        private GUIStyle windowStyle;
-        private GUIStyle sidebarStyle;
         private GUIStyle brandTitleStyle;
         private GUIStyle brandBadgeStyle;
         private GUIStyle sectionTitleStyle;
-        private GUIStyle cardStyle;
-        private GUIStyle cardHoverStyle;
         private GUIStyle itemTitleStyle;
         private GUIStyle itemDescStyle;
         private GUIStyle tabNormalStyle;
@@ -45,6 +41,13 @@ namespace TestMenu
         private GUIStyle footerTextStyle;
         private GUIStyle statusBadgeStyle;
 
+        private Texture2D windowBgTex;
+        private Texture2D windowBorderTex;
+        private Texture2D sidebarBgTex;
+        private Texture2D cardBgTex;
+        private Texture2D cardHoverBgTex;
+        private Texture2D cardBorderTex;
+        private Texture2D cardHoverBorderTex;
         private Texture2D topAccentTex;
         private Texture2D dividerTex;
         private Texture2D indicatorActiveTex;
@@ -76,37 +79,35 @@ namespace TestMenu
 
         private void InitStyles()
         {
-            if (stylesInitialized) return;
+            // Проверяем также windowBgTex == null на случай, если Unity очистила текстуры при смене сцены
+            if (stylesInitialized && windowBgTex != null) return;
 
             Color bgMain = new Color(0.055f, 0.058f, 0.075f, 0.98f);
-            Color bgSidebar = new Color(0.042f, 0.045f, 0.058f, 1f);
-            Color bgCard = new Color(0.085f, 0.090f, 0.118f, 1f);
-            Color bgCardHover = new Color(0.105f, 0.112f, 0.145f, 1f);
-            Color borderSubtle = new Color(0.16f, 0.17f, 0.22f, 0.9f);
+            Color bgSidebar = new Color(0.040f, 0.043f, 0.056f, 1f);
+            Color bgCard = new Color(0.088f, 0.094f, 0.124f, 1f);
+            Color bgCardHover = new Color(0.115f, 0.124f, 0.162f, 1f);
+            Color borderSubtle = new Color(0.18f, 0.20f, 0.26f, 1f);
 
             Color accentPrimary = new Color(0.45f, 0.36f, 0.98f, 1f);
             Color accentSecondary = new Color(0.00f, 0.82f, 0.95f, 1f);
-            Color tabActiveBg = new Color(0.45f, 0.36f, 0.98f, 0.18f);
+            Color tabActiveBg = new Color(0.45f, 0.36f, 0.98f, 0.22f);
+
+            windowBgTex = MakeTex(2, 2, bgMain);
+            windowBorderTex = MakeTex(2, 2, borderSubtle);
+            sidebarBgTex = MakeTex(2, 2, bgSidebar);
+            cardBgTex = MakeTex(2, 2, bgCard);
+            cardHoverBgTex = MakeTex(2, 2, bgCardHover);
+            cardBorderTex = MakeTex(2, 2, new Color(1f, 1f, 1f, 0.07f));
+            cardHoverBorderTex = MakeTex(2, 2, new Color(0.45f, 0.36f, 0.98f, 0.65f));
 
             topAccentTex = MakeHorizontalGradientTex(256, 3, accentPrimary, accentSecondary);
-            dividerTex = MakeTex(2, 2, new Color(1f, 1f, 1f, 0.06f));
-            indicatorActiveTex = MakeTex(4, 32, accentPrimary);
-            indicatorInactiveTex = MakeTex(4, 32, new Color(0.20f, 0.22f, 0.28f, 0.5f));
+            dividerTex = MakeTex(2, 2, new Color(1f, 1f, 1f, 0.08f));
+            indicatorActiveTex = MakeTex(2, 2, accentPrimary);
+            indicatorInactiveTex = MakeTex(2, 2, new Color(0.22f, 0.24f, 0.30f, 0.6f));
 
             toggleTrackOnTex = MakeRoundedTex(44, 22, 11, accentPrimary, accentPrimary);
-            toggleTrackOffTex = MakeRoundedTex(44, 22, 11, new Color(0.14f, 0.15f, 0.19f, 1f), borderSubtle);
+            toggleTrackOffTex = MakeRoundedTex(44, 22, 11, new Color(0.15f, 0.16f, 0.21f, 1f), borderSubtle);
             toggleKnobTex = MakeRoundedTex(16, 16, 8, Color.white, Color.white);
-
-            windowStyle = new GUIStyle(GUI.skin.window);
-            windowStyle.normal.background = MakeRoundedTex(64, 64, 10, bgMain, borderSubtle);
-            windowStyle.onNormal.background = windowStyle.normal.background;
-            windowStyle.padding = new RectOffset(0, 0, 0, 0);
-            windowStyle.border = new RectOffset(12, 12, 12, 12);
-
-            sidebarStyle = new GUIStyle(GUI.skin.box);
-            sidebarStyle.normal.background = MakeTex(2, 2, bgSidebar);
-            sidebarStyle.margin = new RectOffset(0, 0, 0, 0);
-            sidebarStyle.padding = new RectOffset(12, 12, 16, 12);
 
             brandTitleStyle = new GUIStyle(GUI.skin.label);
             brandTitleStyle.fontSize = 15;
@@ -121,56 +122,45 @@ namespace TestMenu
             sectionTitleStyle = new GUIStyle(GUI.skin.label);
             sectionTitleStyle.fontSize = 11;
             sectionTitleStyle.fontStyle = FontStyle.Bold;
-            sectionTitleStyle.normal.textColor = new Color(0.52f, 0.55f, 0.65f, 1f);
-
-            cardStyle = new GUIStyle(GUI.skin.box);
-            cardStyle.normal.background = MakeRoundedTex(48, 48, 8, bgCard, borderSubtle);
-            cardStyle.border = new RectOffset(10, 10, 10, 10);
-            cardStyle.padding = new RectOffset(12, 14, 10, 10);
-            cardStyle.margin = new RectOffset(0, 0, 0, 8);
-
-            cardHoverStyle = new GUIStyle(cardStyle);
-            cardHoverStyle.normal.background = MakeRoundedTex(48, 48, 8, bgCardHover, new Color(0.45f, 0.36f, 0.98f, 0.45f));
+            sectionTitleStyle.normal.textColor = new Color(0.55f, 0.58f, 0.68f, 1f);
 
             itemTitleStyle = new GUIStyle(GUI.skin.label);
             itemTitleStyle.fontSize = 13;
             itemTitleStyle.fontStyle = FontStyle.Bold;
-            itemTitleStyle.normal.textColor = new Color(0.93f, 0.94f, 0.98f, 1f);
-            itemTitleStyle.margin = new RectOffset(0, 0, 0, 2);
+            itemTitleStyle.normal.textColor = new Color(0.95f, 0.96f, 0.99f, 1f);
 
             itemDescStyle = new GUIStyle(GUI.skin.label);
             itemDescStyle.fontSize = 11;
-            itemDescStyle.normal.textColor = new Color(0.55f, 0.58f, 0.68f, 1f);
-            itemDescStyle.margin = new RectOffset(0, 0, 0, 0);
+            itemDescStyle.normal.textColor = new Color(0.58f, 0.61f, 0.72f, 1f);
 
             tabNormalStyle = new GUIStyle(GUI.skin.button);
             tabNormalStyle.fontSize = 11;
             tabNormalStyle.fontStyle = FontStyle.Bold;
             tabNormalStyle.alignment = TextAnchor.MiddleLeft;
-            tabNormalStyle.normal.textColor = new Color(0.60f, 0.63f, 0.72f, 1f);
+            tabNormalStyle.normal.textColor = new Color(0.65f, 0.68f, 0.78f, 1f);
             tabNormalStyle.hover.textColor = Color.white;
             tabNormalStyle.normal.background = MakeTex(2, 2, Color.clear);
-            tabNormalStyle.hover.background = MakeRoundedTex(32, 32, 6, new Color(1f, 1f, 1f, 0.04f), Color.clear);
+            tabNormalStyle.hover.background = MakeTex(2, 2, new Color(1f, 1f, 1f, 0.05f));
             tabNormalStyle.fixedHeight = 34;
             tabNormalStyle.margin = new RectOffset(0, 0, 2, 2);
 
             tabActiveStyle = new GUIStyle(tabNormalStyle);
             tabActiveStyle.normal.textColor = Color.white;
-            tabActiveStyle.normal.background = MakeRoundedTex(32, 32, 6, tabActiveBg, new Color(0.45f, 0.36f, 0.98f, 0.5f));
+            tabActiveStyle.normal.background = MakeTex(2, 2, tabActiveBg);
             tabActiveStyle.hover.background = tabActiveStyle.normal.background;
 
             actionBtnStyle = new GUIStyle(GUI.skin.button);
             actionBtnStyle.fontSize = 11;
             actionBtnStyle.fontStyle = FontStyle.Bold;
-            actionBtnStyle.normal.textColor = new Color(0.85f, 0.87f, 0.95f, 1f);
+            actionBtnStyle.normal.textColor = new Color(0.88f, 0.90f, 0.97f, 1f);
             actionBtnStyle.hover.textColor = Color.white;
-            actionBtnStyle.normal.background = MakeRoundedTex(32, 32, 6, bgCard, borderSubtle);
-            actionBtnStyle.hover.background = MakeRoundedTex(32, 32, 6, bgCardHover, accentPrimary);
-            actionBtnStyle.fixedHeight = 28;
+            actionBtnStyle.normal.background = cardBgTex;
+            actionBtnStyle.hover.background = cardHoverBgTex;
+            actionBtnStyle.fixedHeight = 30;
 
             footerTextStyle = new GUIStyle(GUI.skin.label);
             footerTextStyle.fontSize = 10;
-            footerTextStyle.normal.textColor = new Color(0.45f, 0.48f, 0.58f, 1f);
+            footerTextStyle.normal.textColor = new Color(0.48f, 0.51f, 0.62f, 1f);
 
             statusBadgeStyle = new GUIStyle(GUI.skin.label);
             statusBadgeStyle.fontSize = 10;
@@ -184,25 +174,47 @@ namespace TestMenu
             if (!show) return;
 
             InitStyles();
-            rect = GUI.Window(0, rect, WindowFunc, "", windowStyle);
+            // Используем GUIStyle.none и рисуем фон вручную внутри WindowFunc — это гарантирует 100% видимость фона
+            rect = GUI.Window(0, rect, WindowFunc, GUIContent.none, GUIStyle.none);
         }
 
         private void WindowFunc(int id)
         {
+            // 1. Внешняя рамка и основной фон окна
+            GUI.DrawTexture(new Rect(0, 0, rect.width, rect.height), windowBorderTex);
+            GUI.DrawTexture(new Rect(1, 1, rect.width - 2, rect.height - 2), windowBgTex);
+
+            // 2. Фон левого сайдбара и разделительная линия
+            float sidebarWidth = 170f;
+            GUI.DrawTexture(new Rect(1, 3, sidebarWidth, rect.height - 4), sidebarBgTex);
+            GUI.DrawTexture(new Rect(sidebarWidth, 3, 1, rect.height - 4), dividerTex);
+
+            // 3. Верхняя неоновая градиентная полоса
             GUI.DrawTexture(new Rect(0, 0, rect.width, 3), topAccentTex);
 
             GUILayout.BeginHorizontal(GUILayout.ExpandHeight(true));
 
+            // ==========================================
             // ЛЕВАЯ ПАНЕЛЬ (SIDEBAR)
-            GUILayout.BeginVertical(sidebarStyle, GUILayout.Width(165), GUILayout.ExpandHeight(true));
+            // ==========================================
+            GUILayout.BeginVertical(GUILayout.Width(sidebarWidth), GUILayout.ExpandHeight(true));
+            GUILayout.Space(14);
 
+            GUILayout.BeginHorizontal();
+            GUILayout.Space(12);
+            GUILayout.BeginVertical();
             GUILayout.Label("AETHER // PRIV", brandTitleStyle);
             GUILayout.Label("INTERNAL BUILD 2.0", brandBadgeStyle);
+            GUILayout.EndVertical();
+            GUILayout.EndHorizontal();
 
-            GUILayout.Space(14);
+            GUILayout.Space(12);
             DrawDivider();
             GUILayout.Space(10);
 
+            GUILayout.BeginHorizontal();
+            GUILayout.Space(12);
+            GUILayout.BeginVertical();
             GUILayout.Label("MODULES", sectionTitleStyle);
             GUILayout.Space(4);
 
@@ -214,20 +226,31 @@ namespace TestMenu
                     scrollPos = Vector2.zero;
                 }
             }
+            GUILayout.EndVertical();
+            GUILayout.Space(10);
+            GUILayout.EndHorizontal();
 
             GUILayout.FlexibleSpace();
 
+            GUILayout.BeginHorizontal();
+            GUILayout.Space(12);
+            GUILayout.BeginVertical();
             bool isHost = NetworkServer.active;
             statusBadgeStyle.normal.textColor = isHost
                 ? new Color(0.15f, 0.85f, 0.55f, 1f)
                 : new Color(0.95f, 0.65f, 0.20f, 1f);
 
-            GUILayout.Label(isHost ? "● HOST SERVER ACTIVE" : "● CLIENT MODE (NO HOST)", statusBadgeStyle);
+            GUILayout.Label(isHost ? "● HOST SERVER ACTIVE" : "● CLIENT MODE", statusBadgeStyle);
             GUILayout.Label($"ACTIVE MODS: {CountActiveModules()} / 10", footerTextStyle);
+            GUILayout.EndVertical();
+            GUILayout.EndHorizontal();
 
+            GUILayout.Space(12);
             GUILayout.EndVertical();
 
+            // ==========================================
             // ПРАВАЯ ПАНЕЛЬ (ОСНОВНОЙ КОНТЕНТ)
+            // ==========================================
             GUILayout.BeginVertical(GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
             GUILayout.Space(14);
 
@@ -287,7 +310,7 @@ namespace TestMenu
             }
 
             GUILayout.EndScrollView();
-            GUILayout.Space(10);
+            GUILayout.Space(12);
             GUILayout.EndHorizontal();
 
             GUILayout.Space(12);
@@ -300,20 +323,25 @@ namespace TestMenu
 
         private void DrawModuleCard(string title, string description, ref bool state)
         {
-            Rect cardRect = GUILayoutUtility.GetRect(new GUIContent(title), cardStyle, GUILayout.Height(54), GUILayout.ExpandWidth(true));
+            Rect cardRect = GUILayoutUtility.GetRect(100, 54, GUILayout.ExpandWidth(true));
             bool isHovered = cardRect.Contains(Event.current.mousePosition);
 
-            GUI.Box(cardRect, GUIContent.none, isHovered ? cardHoverStyle : cardStyle);
+            // Рамка и фон карточки через GUI.DrawTexture
+            GUI.DrawTexture(cardRect, isHovered ? cardHoverBorderTex : cardBorderTex);
+            GUI.DrawTexture(new Rect(cardRect.x + 1, cardRect.y + 1, cardRect.width - 2, cardRect.height - 2), isHovered ? cardHoverBgTex : cardBgTex);
 
+            // Вертикальная полоска-индикатор слева
             Rect indicatorRect = new Rect(cardRect.x + 1, cardRect.y + 10, 3, cardRect.height - 20);
             GUI.DrawTexture(indicatorRect, state ? indicatorActiveTex : indicatorInactiveTex);
 
+            // Текст заголовка и описания
             Rect titleRect = new Rect(cardRect.x + 14, cardRect.y + 8, cardRect.width - 74, 20);
             Rect descRect = new Rect(cardRect.x + 14, cardRect.y + 27, cardRect.width - 74, 18);
 
             GUI.Label(titleRect, title, itemTitleStyle);
             GUI.Label(descRect, description, itemDescStyle);
 
+            // Кастомный Pill-переключатель справа
             Rect toggleRect = new Rect(cardRect.xMax - 56, cardRect.y + (cardRect.height - 22) * 0.5f, 44, 22);
             GUI.DrawTexture(toggleRect, state ? toggleTrackOnTex : toggleTrackOffTex);
 
@@ -321,6 +349,7 @@ namespace TestMenu
             Rect knobRect = new Rect(knobX, toggleRect.y + 3, 16, 16);
             GUI.DrawTexture(knobRect, toggleKnobTex);
 
+            // Клик по карточке
             if (Event.current.type == EventType.MouseDown && Event.current.button == 0 && cardRect.Contains(Event.current.mousePosition))
             {
                 state = !state;
@@ -394,7 +423,10 @@ namespace TestMenu
         {
             Color[] pix = new Color[width * height];
             for (int i = 0; i < pix.Length; i++) pix[i] = col;
-            Texture2D result = new Texture2D(width, height);
+            Texture2D result = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            result.hideFlags = HideFlags.HideAndDontSave;
+            result.wrapMode = TextureWrapMode.Clamp;
+            result.filterMode = FilterMode.Point;
             result.SetPixels(pix);
             result.Apply();
             return result;
@@ -402,7 +434,10 @@ namespace TestMenu
 
         private Texture2D MakeHorizontalGradientTex(int width, int height, Color left, Color right)
         {
-            Texture2D result = new Texture2D(width, height);
+            Texture2D result = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            result.hideFlags = HideFlags.HideAndDontSave;
+            result.wrapMode = TextureWrapMode.Clamp;
+            result.filterMode = FilterMode.Bilinear;
             for (int x = 0; x < width; x++)
             {
                 Color c = Color.Lerp(left, right, (float)x / (width - 1));
@@ -418,6 +453,9 @@ namespace TestMenu
         private Texture2D MakeRoundedTex(int width, int height, int radius, Color fill, Color border)
         {
             Texture2D result = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            result.hideFlags = HideFlags.HideAndDontSave;
+            result.wrapMode = TextureWrapMode.Clamp;
+            result.filterMode = FilterMode.Bilinear;
             for (int y = 0; y < height; y++)
             {
                 for (int x = 0; x < width; x++)
