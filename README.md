@@ -23,7 +23,7 @@
 * **Duck Race — Turbo Win:** ускоряет выбранную утку и замедляет соперников.
 
 ## Установка и использование
-1. Скачайте и установите [Release](https://github.com/eporeks/casino-bet/releases/tag/release)
+1. Скачайте и установите [Release](https://github.com/eporeks/Gamble-with-your-friends_CheatMenu/releases)
 2. Перейдите в папку игры и перекиньте туда все файлы из этой папки
    
 ИЛИ
