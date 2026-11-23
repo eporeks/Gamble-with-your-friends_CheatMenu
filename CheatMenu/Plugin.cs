@@ -552,56 +552,49 @@ namespace TestMenu
     [HarmonyPatch(typeof(Blackjack), "DealCardToPlayer")]
     public static class BlackjackDealPatch
     {
-        static bool Prefix(Blackjack __instance, bool isFaceDown)
+        static bool Prefix(Blackjack __instance)
         {
             if (!Plugin.rigBlackjack) return true;
-
-            if (!NetworkServer.active)
-            {
-                Debug.LogWarning("[Server] function 'System.Void Blackjack::DealCardToPlayer(System.Boolean)' called when server was not active");
-                return false;
-            }
+            if (!NetworkServer.active) return true;
 
             var deckField = AccessTools.Field(typeof(Blackjack), "deck");
             var playerHandField = AccessTools.Field(typeof(Blackjack), "playerHand");
-            var spawnedPlayerCardsField = AccessTools.Field(typeof(Blackjack), "spawnedPlayerCards");
-
             var initDeckMethod = AccessTools.Method(typeof(Blackjack), "InitializeDeck");
-            var dealToHandMethod = AccessTools.Method(typeof(Blackjack), "DealCardToHand");
 
-            var deck = (List<CardData>)deckField.GetValue(__instance);
-            var playerHand = (List<CardData>)playerHandField.GetValue(__instance);
-            var spawnedPlayerCards = spawnedPlayerCardsField.GetValue(__instance);
+            var deck = deckField?.GetValue(__instance) as List<CardData>;
+            // Используем IList (или SyncList<CardData>), так как SyncList реализует IList
+            var playerHand = playerHandField?.GetValue(__instance) as IList;
 
+            if (deck == null || playerHand == null) return true;
+
+            // Если колода пуста, инициализируем её заранее, чтобы было из чего выбирать
             if (deck.Count == 0)
             {
-                initDeckMethod.Invoke(__instance, null);
-                deck = (List<CardData>)deckField.GetValue(__instance);
+                initDeckMethod?.Invoke(__instance, null);
             }
 
-            int num = -1;
+            int targetIndex = -1;
             if (playerHand.Count == 0)
             {
-                num = deck.FindIndex((CardData c) => c.Rank == Rank.Ace);
+                // Первая карта — Туз (11 очков)
+                targetIndex = deck.FindIndex(c => c.Rank == Rank.Ace);
             }
             else if (playerHand.Count == 1)
             {
-                num = deck.FindIndex((CardData c) => c.GetBlackjackValue() == 10);
+                // Вторая карта — любая карта номиналом 10 (10, Валет, Дама, Король)
+                targetIndex = deck.FindIndex(c => c.GetBlackjackValue() == 10);
             }
 
-            if (num > 0)
+            // Перемещаем найденную карту на верх колоды (индекс 0)
+            if (targetIndex > 0)
             {
-                CardData item = deck[num];
-                deck.RemoveAt(num);
-                deck.Insert(0, item);
+                CardData card = deck[targetIndex];
+                deck.RemoveAt(targetIndex);
+                deck.Insert(0, card);
             }
 
-            Type cardAreaEnum = AccessTools.Inner(typeof(Blackjack), "CardAreaType");
-            object playerAreaVal = Enum.Parse(cardAreaEnum, "Player");
-
-            dealToHandMethod.Invoke(__instance, new object[] { playerHand, spawnedPlayerCards, playerAreaVal, isFaceDown });
-
-            return false;
+            // Возвращаем true — оригинальный DealCardToPlayer сам возьмёт deck[0] и раздаст игроку
+            return true;
         }
     }
 
